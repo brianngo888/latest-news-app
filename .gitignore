@@ -7,3 +7,5 @@ web-build/
 .DS_Store
 backend/target/
 *.log
+*/.DS_Store
+*/build
