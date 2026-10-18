@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: news-backend-config
+  namespace: vnexpress-news
+data:
+  SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/newsdb
+  NEWS_RSS_URL: https://vnexpress.net/rss/tin-moi-nhat.rss
+  NEWS_COLLECTION_INTERVAL_MS: "300000"
+  NEWS_MAX_ARTICLES: "20"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: news-backend
+  namespace: vnexpress-news
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: news-backend }
+  template:
+    metadata:
+      labels: { app: news-backend }
+    spec:
+      containers:
+        - name: backend
+          image: vnexpress-news-backend:local
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8080 }]
+          envFrom: [{ configMapRef: { name: news-backend-config } }]
+          env:
+            - name: SPRING_R2DBC_USERNAME
+              valueFrom: { secretKeyRef: { name: news-db-secret, key: username } }
+            - name: SPRING_R2DBC_PASSWORD
+              valueFrom: { secretKeyRef: { name: news-db-secret, key: password } }
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: news-backend
+  namespace: vnexpress-news
+spec:
+  selector: { app: news-backend }
+  ports: [{ port: 8080, targetPort: 8080 }]
+  type: ClusterIP

@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: newsdb
+      POSTGRES_USER: newsapp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-newsapp-local-only}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U newsapp -d newsdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/newsdb
+      SPRING_R2DBC_USERNAME: newsapp
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD:-newsapp-local-only}
+      NEWS_RSS_URL: ${NEWS_RSS_URL:-https://vnexpress.net/rss/tin-moi-nhat.rss}
+      NEWS_COLLECTION_INTERVAL_MS: ${NEWS_COLLECTION_INTERVAL_MS:-300000}
+      NEWS_MAX_ARTICLES: ${NEWS_MAX_ARTICLES:-20}
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://otel-collector:4318/v1/traces
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.136.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.72.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    profiles: ["elk"]
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    volumes: ["elk_data:/usr/share/elasticsearch/data"]
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.17.0
+    profiles: ["elk"]
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports: ["5044:5044", "5000:5000"]
+    depends_on: [elasticsearch]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.17.0
+    profiles: ["elk"]
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports: ["5601:5601"]
+    depends_on: [elasticsearch]
+
+volumes:
+  postgres_data:
+  elk_data:

@@ -1,0 +1,41 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+spring:
+  application:
+    name: fetch-news-backend
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5432/newsdb}
+    username: ${SPRING_R2DBC_USERNAME:newsapp}
+    password: ${SPRING_R2DBC_PASSWORD:newsapp-local-only}
+  sql:
+    init:
+      mode: always
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4318/v1/traces}
+      # endpoint: ${MANAGEMENT_OTLP_TRACING_ENDPOINT:http://localhost:4317/v1/traces}
+      # protocol: grpc 
+  observations:
+    key-values:
+      application: vnexpress-news
+news:
+  rss:
+    url: ${NEWS_RSS_URL:https://vnexpress.net/rss/tin-moi-nhat.rss}
+    interval-ms: ${NEWS_COLLECTION_INTERVAL_MS:300000}
+    max-articles: ${NEWS_MAX_ARTICLES:20}
+    connect-timeout-ms: ${NEWS_CONNECT_TIMEOUT_MS:5000}
+    response-timeout-ms: ${NEWS_RESPONSE_TIMEOUT_MS:10000}

@@ -1,0 +1,9 @@
+*/node_modules/
+*/package-lock.json
+.expo/
+dist/
+web-build/
+.env
+.DS_Store
+backend/target/
+*.log

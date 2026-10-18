@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Fetch News",
+    "slug": "fetch-news",
+    "scheme": "fetchnews",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.brianngo333.fetchnews" },
+    "android": { "package": "com.brianngo333.fetchnews" },
+    "experiments": { "typedRoutes": true }
+  }
+}
